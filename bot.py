@@ -1,18 +1,14 @@
-import os
 import random
-import datetime
 import time
 import feedparser
-
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import asyncio
 
-# ===== Переменные окружения =====
-BOT_TOKEN = os.getenv("8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk")
-WEATHER_KEY = os.getenv("0592543ac6b25a5732b5b85f52ca1d1e")
-CITY = os.getenv("CITY", "Moscow")
-CHAT_ID = -5084894998
+# ===== Настройки =====
+BOT_TOKEN = "8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk"  # токен бота
+CHAT_ID = -5084894998                                           # ID группы
 
 # ===== Юморные фразы =====
 PHOTO_REPLIES = [
@@ -52,24 +48,17 @@ LAST_REPLY_TIME = 0
 COOLDOWN = 120  # секунд между реакциями
 
 # ===== Функции =====
-def get_weather():
-    url = (
-        f"https://api.openweathermap.org/data/2.5/weather"
-        f"?q={CITY}&appid={WEATHER_KEY}&units=metric&lang=ru"
-    )
-    data = requests.get(url).json()
-    temp = data["main"]["temp"]
-    desc = data["weather"][0]["description"]
-    return f"{temp}°C, {desc}"
-
 def get_rss_meme():
-    subreddit_rss = random.choice(SUBREDDITS_RSS)
-    feed = feedparser.parse(subreddit_rss)
-    posts = feed.entries
-    if not posts:
+    try:
+        subreddit_rss = random.choice(SUBREDDITS_RSS)
+        feed = feedparser.parse(subreddit_rss)
+        posts = feed.entries
+        if not posts:
+            return None
+        post = random.choice(posts)
+        return post.link
+    except Exception:
         return None
-    post = random.choice(posts)
-    return post.link
 
 async def can_reply():
     global LAST_REPLY_TIME
@@ -90,17 +79,9 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== Часовое сообщение =====
 async def hourly_message(context: ContextTypes.DEFAULT_TYPE):
-    action = random.choice(["weather", "meme", "joke"])
+    action = random.choice(["meme", "joke"])
 
-    if action == "weather":
-        now = datetime.datetime.now().strftime("%H:%M")
-        weather = get_weather()
-        await context.bot.send_message(
-            chat_id=CHAT_ID,
-            text=f"⏰ Сейчас {now}\n🌦 Погода: {weather}"
-        )
-
-    elif action == "meme":
+    if action == "meme":
         meme_link = get_rss_meme()
         if meme_link:
             await context.bot.send_message(
@@ -131,6 +112,4 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
-    import asyncio
-    import requests
     asyncio.run(main())
