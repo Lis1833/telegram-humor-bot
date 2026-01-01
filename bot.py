@@ -12,7 +12,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 BOT_TOKEN = os.getenv("8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk")
 WEATHER_KEY = os.getenv("0592543ac6b25a5732b5b85f52ca1d1e")
 CITY = os.getenv("CITY", "Moscow")
-CHAT_ID = int(os.getenv("-5084894998"))
+CHAT_ID = -5084894998
 
 # ===== Юморные фразы =====
 PHOTO_REPLIES = [
