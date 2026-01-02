@@ -2,14 +2,23 @@ import random
 import datetime
 import feedparser
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
-import os
+from telegram.ext import (
+    ApplicationBuilder,
+    ContextTypes,
+    MessageHandler,
+    CommandHandler,
+    filters
+)
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import os
+import nest_asyncio
+import asyncio
 
 # ===== НАСТРОЙКИ =====
 BOT_TOKEN = "8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk"
 CHAT_ID = -5084894998
-PORT = int(os.environ.get("PORT", 5000))  # Render автоматически задаёт порт
+PORT = int(os.environ.get("PORT", 5000))
+WEBHOOK_URL = "https://your-service-name.onrender.com/telegram"  # Заменить на реальный URL сервиса
 
 # ===== ЮМОРНЫЕ ФРАЗЫ =====
 PHOTO_REPLIES = [
@@ -50,9 +59,12 @@ def can_reply():
     return False
 
 def get_meme():
-    feed = feedparser.parse(random.choice(SUBREDDITS_RSS))
-    if feed.entries:
-        return random.choice(feed.entries).link
+    try:
+        feed = feedparser.parse(random.choice(SUBREDDITS_RSS))
+        if feed.entries:
+            return random.choice(feed.entries).link
+    except Exception:
+        return None
     return None
 
 # ===== ОБРАБОТЧИКИ =====
@@ -69,11 +81,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ===== ЧАСОВОЕ СООБЩЕНИЕ =====
 async def hourly_job(context: ContextTypes.DEFAULT_TYPE):
-    # Текущее время
     now = datetime.datetime.now().strftime("%H:%M")
     await context.bot.send_message(CHAT_ID, f"⏰ Текущее время: {now}")
 
-    # Мем или шутка
     if random.choice([True, False]):
         meme = get_meme()
         if meme:
@@ -96,7 +106,6 @@ async def main():
     scheduler.start()
 
     # Запуск Webhook
-    WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/telegram"
     await app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
@@ -105,5 +114,5 @@ async def main():
 
 # ===== ЗАПУСК =====
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    nest_asyncio.apply()  # позволяет re-enter в уже существующий loop Render
+    asyncio.get_event_loop().run_until_complete(main())
