@@ -1,15 +1,15 @@
 import random
-import time
+import datetime
 import feedparser
-import asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
+from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, CommandHandler, filters
+import os
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import nest_asyncio
 
 # ===== НАСТРОЙКИ =====
 BOT_TOKEN = "8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk"
 CHAT_ID = -5084894998
+PORT = int(os.environ.get("PORT", 5000))  # Render автоматически задаёт порт
 
 # ===== ЮМОРНЫЕ ФРАЗЫ =====
 PHOTO_REPLIES = [
@@ -35,12 +35,14 @@ SUBREDDITS_RSS = [
     "https://www.reddit.com/r/ProgrammerHumor/.rss",
 ]
 
+# ===== АНТИФЛУД =====
 LAST_REPLY = 0
 COOLDOWN = 120  # секунд между ответами
 
 # ===== ФУНКЦИИ =====
 def can_reply():
     global LAST_REPLY
+    import time
     now = time.time()
     if now - LAST_REPLY > COOLDOWN:
         LAST_REPLY = now
@@ -53,6 +55,7 @@ def get_meme():
         return random.choice(feed.entries).link
     return None
 
+# ===== ОБРАБОТЧИКИ =====
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if random.random() < 0.5 and can_reply():
         await update.message.reply_text(random.choice(PHOTO_REPLIES))
@@ -61,8 +64,16 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if random.random() < 0.5 and can_reply():
         await update.message.reply_text(random.choice(VIDEO_REPLIES))
 
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Бот запущен через Webhook! 🟢")
+
+# ===== ЧАСОВОЕ СООБЩЕНИЕ =====
 async def hourly_job(context: ContextTypes.DEFAULT_TYPE):
-    """Часовая задача: шутка или мем"""
+    # Текущее время
+    now = datetime.datetime.now().strftime("%H:%M")
+    await context.bot.send_message(CHAT_ID, f"⏰ Текущее время: {now}")
+
+    # Мем или шутка
     if random.choice([True, False]):
         meme = get_meme()
         if meme:
@@ -72,32 +83,27 @@ async def hourly_job(context: ContextTypes.DEFAULT_TYPE):
 
 # ===== ОСНОВНАЯ ФУНКЦИЯ =====
 async def main():
-    # Для Render, чтобы asyncio работал внутри существующего loop
-    nest_asyncio.apply()
-
-    # Создаём приложение бота
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Добавляем хендлеры для фото/видео
+    # Хендлеры
+    app.add_handler(CommandHandler("start", start_command))
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO, on_video))
 
     # Планировщик APScheduler
     scheduler = AsyncIOScheduler()
+    scheduler.add_job(hourly_job, "interval", hours=1, args=[app.bot])
+    scheduler.start()
 
-    async def start_scheduler():
-        scheduler.add_job(hourly_job, "interval", hours=1, args=[app.bot])
-        scheduler.start()
-
-    # Инициализация приложения
-    await app.initialize()
-
-    # Запуск планировщика в текущем loop
-    app.create_task(start_scheduler())
-
-    # Запуск polling (один экземпляр — без конфликтов)
-    await app.run_polling()
+    # Запуск Webhook
+    WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/telegram"
+    await app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=WEBHOOK_URL
+    )
 
 # ===== ЗАПУСК =====
 if __name__ == "__main__":
+    import asyncio
     asyncio.run(main())
