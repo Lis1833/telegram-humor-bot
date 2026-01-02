@@ -71,7 +71,7 @@ async def hourly_job(context: ContextTypes.DEFAULT_TYPE):
 
 # ===== ОСНОВНАЯ ФУНКЦИЯ =====
 async def main():
-    nest_asyncio.apply()  # нужно для Render
+    nest_asyncio.apply()  # нужен для Render
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     # ===== Добавляем обработчики =====
@@ -86,9 +86,9 @@ async def main():
         scheduler.start()
 
     # ===== Инициализация приложения =====
-    await app.initialize()  
+    await app.initialize()
 
-    # ===== Запуск планировщика в уже существующем loop =====
+    # ===== Запуск планировщика в существующем loop =====
     app.create_task(start_scheduler())
 
     # ===== Запуск polling =====
