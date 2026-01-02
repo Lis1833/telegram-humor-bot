@@ -5,6 +5,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import nest_asyncio
 
 # ===== НАСТРОЙКИ =====
 BOT_TOKEN = "8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk"
@@ -70,6 +71,7 @@ async def hourly_job(context: ContextTypes.DEFAULT_TYPE):
 
 # ===== ОСНОВНАЯ ФУНКЦИЯ =====
 async def main():
+    nest_asyncio.apply()  # нужно для Render
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     # ===== Добавляем обработчики =====
@@ -83,10 +85,10 @@ async def main():
         scheduler.add_job(hourly_job, "interval", hours=1, args=[app.bot])
         scheduler.start()
 
-    # ===== Инициализация приложения (создаёт loop) =====
-    await app.initialize()
+    # ===== Инициализация приложения =====
+    await app.initialize()  
 
-    # ===== Запускаем планировщик в уже существующем loop =====
+    # ===== Запуск планировщика в уже существующем loop =====
     app.create_task(start_scheduler())
 
     # ===== Запуск polling =====
@@ -94,6 +96,4 @@ async def main():
 
 # ===== ЗАПУСК на Render =====
 if __name__ == "__main__":
-    import nest_asyncio
-    nest_asyncio.apply()  # нужно для Render, чтобы asyncio работал корректно
     asyncio.run(main())
