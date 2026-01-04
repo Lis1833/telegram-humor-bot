@@ -15,9 +15,8 @@ CHAT_ID = -5084894998
 
 MOSCOW_TZ = pytz.timezone("Europe/Moscow")
 
-BASE_URL = os.environ.get("RAILWAY_STATIC_URL", "https://your-railway-app.up.railway.app")
+# URL Railway для Webhook, должен быть задан как Environment Variable
 WEBHOOK_PATH = f"/{BOT_TOKEN}"
-WEBHOOK_URL = f"{BASE_URL}{WEBHOOK_PATH}"
 
 # ================== ТЕКСТЫ ==================
 
@@ -25,7 +24,7 @@ PHOTO_REPLIES = [
     "📸 Ого, вот это кадр!", "😂 Картинка огонь", "🖼 Такое надо в рамку",
     "👀 Я всё видел", "😄 Чат одобряет", "🔥 Это достойно лайка",
     "🤣 Мемный потенциал", "😏 Подозрительно смешно", "📷 Фотка дня",
-    "😂 Сохраняю в память", "🫠 Красиво пошло", "🤌 Эстетика",
+    "😂 Улыбнуло", "🫠 Красиво пошло", "🤌 Эстетика",
     "😎 Хорош", "🤡 Ну ты выдал", "🖌 Искусство",
     "📸 Скрин судьбы", "😂 Улыбнуло", "👁 Вижу, вижу",
     "😆 Зачёт", "🫡 Принято"
@@ -64,13 +63,27 @@ async def send_time(app):
     now = datetime.now(MOSCOW_TZ).strftime("%d.%m.%Y %H:%M")
     await app.bot.send_message(CHAT_ID, f"🕒 Сейчас в Москве: {now}")
 
+# ================== POST INIT ==================
+
 async def post_init(app):
+    # ==== Шедулер ====
     scheduler = AsyncIOScheduler()
     scheduler.add_job(send_silence, "interval", minutes=30, args=[app])
     scheduler.add_job(send_time, "interval", hours=1, args=[app])
     scheduler.start()
 
-    await app.bot.set_webhook(WEBHOOK_URL)
+    # ==== Webhook ====
+    RAILWAY_URL = os.environ.get("RAILWAY_STATIC_URL")
+    if not RAILWAY_URL:
+        print("⚠️ Переменная RAILWAY_STATIC_URL не задана! Webhook не зарегистрирован.")
+        return
+
+    WEBHOOK_URL = f"{RAILWAY_URL}{WEBHOOK_PATH}"
+    result = await app.bot.set_webhook(WEBHOOK_URL)
+    if result:
+        print(f"✅ Webhook установлен на: {WEBHOOK_URL}")
+    else:
+        print("❌ Не удалось установить Webhook")
 
 # ================== TELEGRAM APP ==================
 
