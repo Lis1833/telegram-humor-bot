@@ -30,6 +30,11 @@ jobs:
       # Запуск бота
       - name: Run Telegram Bot
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
+          BOT_TOKEN: ${{ secrets.8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk }}
+          CHAT_ID: ${{ secrets.-5084894998 }}
         run: python bot.py
+
+
+
+
+
