@@ -10,9 +10,8 @@ from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filte
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # ===== Переменные из GitHub Secrets =====
-BOT_TOKEN = os.getenv("8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk")
-CHAT_ID = int(os.getenv("-5084894998"))
-
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = int(os.getenv("CHAT_ID"))
 
 # ===== Реакции на фото =====
 PHOTO_REPLIES = [
