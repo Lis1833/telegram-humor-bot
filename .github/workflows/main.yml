@@ -1,31 +1,38 @@
-name: Telegram Bot
+name: Telegram Bot Deployment
 
+# Запуск при пуше в ветку main
 on:
   push:
     branches:
       - main
-  schedule:
-    - cron: '*/5 * * * *'  # каждые 5 минут
 
 jobs:
-  run-bot:
+  deploy-bot:
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
+    env:
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      CHAT_ID: ${{ secrets.CHAT_ID }}
+      WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}  # Например: https://telegram-humor-bot-production.up.railway.app/bot
 
+    steps:
+      # 1️⃣ Клонируем репозиторий
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ Устанавливаем Python
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.12
+          python-version: '3.11'   # строго 3.11, 3.12 тоже работает
 
+      # 3️⃣ Устанавливаем зависимости
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install python-telegram-bot[webhooks] apscheduler
 
-      - name: Run Telegram Bot
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID }}
-        run: python bot.py
+      # 4️⃣ Запуск бота
+      - name: Run bot
+        run: |
+          python bot.py
