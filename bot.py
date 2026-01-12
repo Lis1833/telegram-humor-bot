@@ -1,19 +1,20 @@
 import os
-import asyncio
 import random
 import time
-from datetime import datetime, timezone, timedelta
-
 import feedparser
-from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram import Update, Bot
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import asyncio
+import nest_asyncio
 
-# ===== Переменные из GitHub Secrets =====
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = int(os.getenv("CHAT_ID"))
+# ===== Настройки =====
+BOT_TOKEN = "8573534227:AAEN4-SfbqohLk-Fd-Wbs7_8T95HQp1m-Wk"
+CHAT_ID = -5084894998  # твоя группа
 
-# ===== Реакции на фото =====
+nest_asyncio.apply()  # нужно для работы asyncio в некоторых окружениях
+
+# ===== Юморные фразы =====
 PHOTO_REPLIES = [
     "🖼 Так… это искусство или мем?",
     "📸 Скриншот судьбы принят 😄",
@@ -21,23 +22,8 @@ PHOTO_REPLIES = [
     "👀 А вот с этого места поподробнее",
     "😂 Картинка сказала больше, чем слова",
     "🫠 Чат официально стал красивее",
-    "🤔 Не уверен, что понимаю...",
-    "😎 Картинка для вдохновения",
-    "🔥 Это точно огонь!",
-    "👏 Отличная работа!",
-    "😳 Вот это да!",
-    "🤣 Хохот до слёз",
-    "🙃 Переворачиваем всё с ног на голову",
-    "💡 Интересная идея",
-    "😏 С намёком на юмор",
-    "😮 Вау, неожиданно",
-    "🫡 Заслуживает лайка",
-    "🫢 Неожиданно мило",
-    "😂 Чистый мем",
-    "😬 Ну такое…"
 ]
 
-# ===== Реакции на видео =====
 VIDEO_REPLIES = [
     "🎬 Попкорн где?",
     "📹 Ну всё, залипли",
@@ -45,31 +31,16 @@ VIDEO_REPLIES = [
     "😂 Видео — лучший аргумент",
     "🎞 Надеюсь, без сюжета как в артхаусе",
     "🫣 Это точно можно смотреть?",
-    "😎 Видеоконтент на максималках",
-    "🔥 Горячий ролик!",
-    "👏 Браво!",
-    "🤣 Смех в кадре",
-    "🙃 Улыбка гарантирована",
-    "💡 Креатив на высоте",
-    "😏 С намёком на юмор",
-    "😮 Шокирующая сцена",
-    "🫡 Заслуживает аплодисментов",
-    "🫢 Сюрприз!",
-    "😂 Чистый юмор",
-    "😬 Неловкий момент",
-    "🤯 Мозг взорван",
-    "😅 Вот это да!"
 ]
 
-# ===== Список шуток =====
 JOKES_LIST = [
     "Почему программисты путают Хэллоуин и Рождество? Потому что OCT 31 = DEC 25 😄",
     "Баг — это фича, о которой ты ещё не знаешь 😉",
     "Учёные доказали: кофе — источник счастья ☕",
-    "Сначала был кофе, потом код ☕💻"
+    "Сначала был кофе, потом код ☕💻",
 ]
 
-# ===== RSS мемов =====
+# ===== RSS сабреддитов для мемов =====
 SUBREDDITS_RSS = [
     "https://www.reddit.com/r/memes/.rss",
     "https://www.reddit.com/r/dankmemes/.rss",
@@ -83,12 +54,10 @@ COOLDOWN = 120  # секунд между реакциями
 # ===== Функции =====
 def get_rss_meme():
     try:
-        subreddit_rss = random.choice(SUBREDDITS_RSS)
-        feed = feedparser.parse(subreddit_rss)
-        posts = feed.entries
-        if not posts:
+        feed = feedparser.parse(random.choice(SUBREDDITS_RSS))
+        if not feed.entries:
             return None
-        post = random.choice(posts)
+        post = random.choice(feed.entries)
         return post.link
     except Exception:
         return None
@@ -101,7 +70,7 @@ async def can_reply():
         return True
     return False
 
-# ===== Обработчики медиа =====
+# ===== Обработчики фото и видео =====
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if random.random() < 0.5 and await can_reply():
         await update.message.reply_text(random.choice(PHOTO_REPLIES))
@@ -110,21 +79,8 @@ async def on_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if random.random() < 0.5 and await can_reply():
         await update.message.reply_text(random.choice(VIDEO_REPLIES))
 
-# ===== Часовые и полчасовые сообщения =====
+# ===== Часовое сообщение =====
 async def hourly_message(context: ContextTypes.DEFAULT_TYPE):
-    now = datetime.now(timezone(timedelta(hours=3)))  # Москва +3
-    await context.bot.send_message(
-        chat_id=CHAT_ID,
-        text=f"🕒 Сейчас {now.strftime('%d.%m.%Y %H:%M:%S')}"
-    )
-
-async def half_hour_message(context: ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(
-        chat_id=CHAT_ID,
-        text="🤫 В чате тишина? Давно не было смешного контента!"
-    )
-
-async def meme_or_joke(context: ContextTypes.DEFAULT_TYPE):
     action = random.choice(["meme", "joke"])
     if action == "meme":
         meme_link = get_rss_meme()
@@ -138,19 +94,18 @@ async def meme_or_joke(context: ContextTypes.DEFAULT_TYPE):
 async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Обработчики
+    # Хендлеры медиа
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     app.add_handler(MessageHandler(filters.VIDEO, on_video))
 
-    # Планировщик
+    # Планировщик часовых сообщений
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(hourly_message, 'interval', hours=1, args=[app.bot])
-    scheduler.add_job(half_hour_message, 'interval', minutes=30, args=[app.bot])
-    scheduler.add_job(meme_or_joke, 'interval', hours=1, args=[app.bot])
+    scheduler.add_job(hourly_message, "interval", minutes=60, args=[app.bot])
     scheduler.start()
 
+    print("Бот запущен ✅")
     await app.run_polling()
 
 # ===== Запуск =====
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.get_event_loop().run_until_complete(main())
